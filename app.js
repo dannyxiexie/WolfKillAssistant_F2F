@@ -35,6 +35,16 @@ const EXIT_METHODS = {
   other: "其他"
 };
 
+const STAGE_ROLE_MAP = {
+  seer: ["seer"],
+  witch: ["witch"],
+  guard: ["guard"],
+  wolf_beauty: ["wolf_beauty"],
+  dreamer: ["dreamer"],
+  cupid: ["cupid"],
+  hunter: ["hunter"]
+};
+
 const defaultState = () => ({
   playerCount: 10,
   roleCounts: { wolf: 3, seer: 1, witch: 1, guard: 1, hunter: 1, villager: 3 },
@@ -241,7 +251,16 @@ function applyPreset(presetId) {
 
 function setRoleCount(roleId, delta) {
   const current = state.roleCounts[roleId] || 0;
-  state.roleCounts[roleId] = Math.max(0, current + delta);
+  const next = Math.max(0, current + delta);
+  state.roleCounts[roleId] = next;
+  if (next === 0) {
+    state.players.forEach((player) => {
+      if (player.roleId === roleId) {
+        player.roleId = "";
+        player.skills = {};
+      }
+    });
+  }
   saveAndRender();
 }
 
@@ -250,6 +269,34 @@ function changePlayerRole(playerId, roleId) {
   if (!player) return;
   player.roleId = roleId;
   player.skills = normalizeSkills(roleId, {});
+  saveAndRender();
+}
+
+function assignRoleToPlayer(roleId, playerId, previousPlayerId = "") {
+  if (!ROLE_BY_ID[roleId]) return;
+  const roleLimit = state.roleCounts[roleId] || 0;
+  if (previousPlayerId && previousPlayerId !== playerId) {
+    const previous = getPlayer(previousPlayerId);
+    if (previous?.roleId === roleId) {
+      previous.roleId = "";
+      previous.skills = {};
+    }
+  }
+  if (roleLimit <= 1) {
+    state.players.forEach((player) => {
+      if (player.roleId === roleId && player.id !== playerId) {
+        player.roleId = "";
+        player.skills = {};
+      }
+    });
+  }
+  if (playerId) {
+    const player = getPlayer(playerId);
+    if (player) {
+      player.roleId = roleId;
+      player.skills = normalizeSkills(roleId, player.skills || {});
+    }
+  }
   saveAndRender();
 }
 
@@ -455,6 +502,7 @@ function renderNight() {
 
 function renderNightAction(stageId) {
   const panel = $("#nightActionPanel");
+  const roleAssigner = nightRoleAssigner(stageId);
   if (stageId === "wolf") {
     panel.innerHTML = `
       ${wolfMarker()}
@@ -464,30 +512,31 @@ function renderNightAction(stageId) {
   }
   if (stageId === "seer") {
     const inspected = getPlayer(state.night.seerInspectTargetId);
-    panel.innerHTML = targetPicker("预言家查验", inspected ? seerResultText(inspected) : "选择查验对象", "seerInspectTargetId", alivePlayers());
+    panel.innerHTML = `${roleAssigner}${targetPicker("预言家查验", inspected ? seerResultText(inspected) : "选择查验对象", "seerInspectTargetId", alivePlayers())}`;
     return;
   }
   if (stageId === "witch") {
-    renderWitchAction(panel);
+    renderWitchAction(panel, roleAssigner);
     return;
   }
   if (stageId === "guard") {
     const guard = state.players.find((player) => player.roleId === "guard");
     const blockedId = guard?.skills?.lastProtectedPlayerId || "";
     const candidates = alivePlayers().map((player) => ({ ...player, disabled: player.id === blockedId }));
-    panel.innerHTML = targetPicker("守卫守护", blockedId ? `上晚守护：${playerLabel(blockedId)}` : "选择今晚守护对象", "guardProtectTargetId", candidates);
+    panel.innerHTML = `${roleAssigner}${targetPicker("守卫守护", blockedId ? `上晚守护：${playerLabel(blockedId)}` : "选择今晚守护对象", "guardProtectTargetId", candidates)}`;
     return;
   }
   if (stageId === "wolf_beauty") {
-    panel.innerHTML = targetPicker("狼美人魅惑", "选择今晚魅惑对象", "wolfBeautyTargetId", alivePlayers());
+    panel.innerHTML = `${roleAssigner}${targetPicker("狼美人魅惑", "选择今晚魅惑对象", "wolfBeautyTargetId", alivePlayers())}`;
     return;
   }
   if (stageId === "dreamer") {
-    panel.innerHTML = targetPicker("摄梦人摄梦", "选择今晚摄梦对象", "dreamerTargetId", alivePlayers());
+    panel.innerHTML = `${roleAssigner}${targetPicker("摄梦人摄梦", "选择今晚摄梦对象", "dreamerTargetId", alivePlayers())}`;
     return;
   }
   if (stageId === "cupid") {
     panel.innerHTML = `
+      ${roleAssigner}
       ${targetPicker("丘比特情侣 1", "选择第一名情侣", "cupidFirstTargetId", alivePlayers())}
       ${targetPicker("丘比特情侣 2", "选择第二名情侣", "cupidSecondTargetId", alivePlayers())}
     `;
@@ -496,6 +545,7 @@ function renderNightAction(stageId) {
   if (stageId === "hunter") {
     const hunters = state.players.filter((player) => player.roleId === "hunter");
     panel.innerHTML = `
+      ${roleAssigner}
       <h3>猎人状态</h3>
       <p class="script-line">记录猎人当前是否可以开枪。被女巫毒出局时通常不能开枪。</p>
       <div class="target-grid">
@@ -507,7 +557,7 @@ function renderNightAction(stageId) {
   panel.innerHTML = "";
 }
 
-function renderWitchAction(panel) {
+function renderWitchAction(panel, roleAssigner = "") {
   const witch = state.players.find((player) => player.roleId === "witch");
   const witchSkills = witch?.skills || state.roleSkills.witch;
   const victimId = state.night.wolfKillTargetId;
@@ -516,6 +566,7 @@ function renderWitchAction(panel) {
   const canHeal = healAvailable && victimId && canWitchHealSelf(witch, victimId);
   const canPoison = poisonAvailable;
   panel.innerHTML = `
+    ${roleAssigner}
     <h3>女巫用药</h3>
     <p class="script-line">昨晚被杀：${victimId ? playerLabel(victimId) : "无人"}${victimId ? roleBadgeText(getPlayer(victimId)) : ""}。解药和毒药各一次，使用后会在天亮结算时消耗。</p>
     <div class="target-grid">
@@ -562,10 +613,45 @@ function seerResultText(player) {
   return `${isWolfRole(player.roleId) ? "🐺 " : ""}${playerLabel(player.id)}：${roleName}`;
 }
 
+function activeRolesForPicker() {
+  return ROLES.filter((role) => (state.roleCounts[role.id] || 0) > 0);
+}
+
 function roleOptions(selectedRoleId) {
   return [`<option value="">未登记</option>`]
-    .concat(ROLES.map((role) => `<option value="${role.id}" ${selectedRoleId === role.id ? "selected" : ""}>${role.name}</option>`))
+    .concat(activeRolesForPicker().map((role) => `<option value="${role.id}" ${selectedRoleId === role.id ? "selected" : ""}>${role.name}</option>`))
     .join("");
+}
+
+function playerSeatOptions(selectedPlayerId) {
+  return [`<option value="">未登记</option>`]
+    .concat(state.players.map((player) => `<option value="${player.id}" ${selectedPlayerId === player.id ? "selected" : ""}>${playerLabel(player.id)}</option>`))
+    .join("");
+}
+
+function nightRoleAssigner(stageId) {
+  const roleIds = STAGE_ROLE_MAP[stageId] || [];
+  const controls = roleIds.flatMap((roleId) => {
+    const role = ROLE_BY_ID[roleId];
+    const count = state.roleCounts[roleId] || 0;
+    if (!role || count <= 0) return [];
+    const selectedPlayers = state.players.filter((player) => player.roleId === roleId);
+    const slotCount = Math.max(1, Math.min(count, 3));
+    return Array.from({ length: slotCount }, (_, index) => {
+      const selectedPlayerId = selectedPlayers[index]?.id || "";
+      const label = count > 1 ? `${role.name}${index + 1}` : role.name;
+      return `
+        <label class="night-role-row">
+          <span>${label}</span>
+          <select data-night-role="${roleId}" data-current-player="${selectedPlayerId}" aria-label="${label}是几号">
+            ${playerSeatOptions(selectedPlayerId)}
+          </select>
+        </label>
+      `;
+    });
+  });
+  if (!controls.length) return "";
+  return `<div class="night-role-assignment">${controls.join("")}</div>`;
 }
 
 function targetPicker(title, hint, field, players) {
@@ -926,6 +1012,7 @@ document.addEventListener("change", (event) => {
   const target = event.target;
   if (target.id === "playerCountInput") setPlayerCount(target.value);
   if (target.dataset.playerRole) changePlayerRole(target.dataset.playerRole, target.value);
+  if (target.dataset.nightRole) assignRoleToPlayer(target.dataset.nightRole, target.value, target.dataset.currentPlayer || "");
   if (target.id === "witchSelfRescueSelect") {
     state.rules.witchSelfRescue = target.value;
     saveAndRender();

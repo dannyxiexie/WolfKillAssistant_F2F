@@ -454,6 +454,39 @@ p {
   display: none;
 }
 
+.night-role-assignment {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(100, 181, 135, 0.36);
+  border-radius: 8px;
+  background: rgba(100, 181, 135, 0.1);
+}
+
+.night-role-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.night-role-row span {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.night-role-row select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid rgba(100, 181, 135, 0.42);
+  border-radius: 8px;
+  background: #141c1a;
+  color: var(--text);
+  padding: 0 8px;
+}
+
 .target-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
