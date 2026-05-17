@@ -396,7 +396,6 @@ function calculateDeathEvents() {
 function renderAll() {
   renderSummary();
   renderRoleBank();
-  renderPlayerSetup();
   renderNight();
   renderBoard();
   renderLogs();
@@ -432,32 +431,6 @@ function renderRoleBank() {
       </div>
     </div>
   `).join("");
-}
-
-function renderPlayerSetup() {
-  const setupList = $("#playerSetupList");
-  if (!setupList) return;
-  const options = [`<option value="">未登记</option>`].concat(
-    ROLES.map((role) => `<option value="${role.id}">${role.name}</option>`)
-  ).join("");
-  setupList.innerHTML = state.players.map((player) => `
-    <div class="player-row">
-      <div class="player-main">
-        <span class="seat-badge">${player.seat}</span>
-        <div class="player-name">
-          <strong>${player.name}</strong>
-          <span>${player.alive ? "存活" : "已出局"}</span>
-        </div>
-      </div>
-      <select data-player-role="${player.id}" aria-label="${player.name}身份">
-        ${options}
-      </select>
-    </div>
-  `).join("");
-  state.players.forEach((player) => {
-    const select = document.querySelector(`[data-player-role="${player.id}"]`);
-    if (select) select.value = player.roleId;
-  });
 }
 
 function renderNight() {
@@ -629,18 +602,17 @@ function renderBoard() {
               <span>${role.camp ? campName(role.camp) : "身份未登记"}</span>
             </div>
           </div>
-          <span class="role-pill" style="--role-color:${role.color}">${role.name}</span>
+          <label class="board-role-row">
+            <span>身份</span>
+            <select data-player-role="${player.id}" aria-label="${player.name}身份">
+              ${roleOptions(player.roleId)}
+            </select>
+          </label>
         </div>
         <div class="ability-row">
           <span class="state-pill ${player.alive ? "" : "is-dead"}">${player.alive ? "存活" : "出局"}</span>
           <button class="ghost-button" type="button" data-${player.alive ? "mark-exit" : "restore-alive"}="${player.id}">${player.alive ? "标记出局" : "恢复存活"}</button>
         </div>
-        <label class="board-role-row">
-          <span>真实身份</span>
-          <select data-player-role="${player.id}" aria-label="${player.name}身份">
-            ${roleOptions(player.roleId)}
-          </select>
-        </label>
         ${player.death ? `<p class="death-note">${formatDeath(player.death)}</p>` : ""}
         ${abilityHtml(player)}
       </article>

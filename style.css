@@ -590,13 +590,14 @@ p {
 }
 
 .board-role-row {
+  flex: 0 0 min(46vw, 168px);
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 32px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 7px 8px;
   background: #12161b;
 }
 
@@ -607,7 +608,8 @@ p {
 }
 
 .board-role-row select {
-  min-height: 36px;
+  width: 100%;
+  min-height: 34px;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
