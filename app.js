@@ -45,6 +45,12 @@ const defaultState = () => ({
   customScripts: {},
   logs: [],
   exitDraftPlayerId: "",
+  roleSkills: {
+    witch: {
+      healAvailable: true,
+      poisonAvailable: true
+    }
+  },
   rules: {
     witchSelfRescue: "first_night_only",
     guardConflict: "target_dies"
@@ -108,6 +114,14 @@ function normalizeState(saved) {
   next.customScripts = saved.customScripts || {};
   next.logs = Array.isArray(saved.logs) ? saved.logs : [];
   next.exitDraftPlayerId = "";
+  next.roleSkills = {
+    ...base.roleSkills,
+    ...(saved.roleSkills || {}),
+    witch: {
+      ...base.roleSkills.witch,
+      ...((saved.roleSkills || {}).witch || {})
+    }
+  };
   next.players = saved.players.map((player, index) => ({
     ...makePlayer(index),
     ...player,
@@ -168,6 +182,15 @@ function getRoleName(roleId) {
   return ROLE_BY_ID[roleId]?.name || "未登记";
 }
 
+function isWolfRole(roleId) {
+  return ROLE_BY_ID[roleId]?.camp === "wolf";
+}
+
+function campHint(player) {
+  if (!player.roleId) return "";
+  return isWolfRole(player.roleId) ? "狼" : "好";
+}
+
 function switchTab(tabId) {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.tab === tabId);
@@ -220,6 +243,14 @@ function changePlayerRole(playerId, roleId) {
   saveAndRender();
 }
 
+function toggleWolfRole(playerId) {
+  const player = getPlayer(playerId);
+  if (!player) return;
+  player.roleId = isWolfRole(player.roleId) ? "" : "wolf";
+  player.skills = normalizeSkills(player.roleId, {});
+  saveAndRender();
+}
+
 function renamePlayers() {
   const names = prompt("输入玩家名称，用逗号或空格分隔。留空会使用默认座位号。", state.players.map((player) => player.name).join(" "));
   if (names === null) return;
@@ -258,6 +289,7 @@ function shuffleRoles() {
   state.lastDeaths = [];
   state.lastDeathText = "尚未结算";
   state.logs = [];
+  state.roleSkills = defaultState().roleSkills;
   saveAndRender();
   showToast("身份已随机分配");
 }
@@ -435,7 +467,10 @@ function renderNight() {
 function renderNightAction(stageId) {
   const panel = $("#nightActionPanel");
   if (stageId === "wolf") {
-    panel.innerHTML = targetPicker("狼人刀人", "选择今晚被杀目标", "wolfKillTargetId", alivePlayers());
+    panel.innerHTML = `
+      ${wolfMarker()}
+      ${targetPicker("狼人刀人", "选择今晚被杀目标", "wolfKillTargetId", alivePlayers())}
+    `;
     return;
   }
   if (stageId === "seer") {
@@ -485,12 +520,15 @@ function renderNightAction(stageId) {
 
 function renderWitchAction(panel) {
   const witch = state.players.find((player) => player.roleId === "witch");
+  const witchSkills = witch?.skills || state.roleSkills.witch;
   const victimId = state.night.wolfKillTargetId;
-  const canHeal = witch?.skills?.healAvailable && victimId && canWitchHealSelf(witch, victimId);
-  const canPoison = witch?.skills?.poisonAvailable;
+  const healAvailable = witchSkills.healAvailable !== false;
+  const poisonAvailable = witchSkills.poisonAvailable !== false;
+  const canHeal = healAvailable && victimId && canWitchHealSelf(witch, victimId);
+  const canPoison = poisonAvailable;
   panel.innerHTML = `
     <h3>女巫用药</h3>
-    <p class="script-line">昨晚被杀：${victimId ? playerLabel(victimId) : "无人"}。解药和毒药各一次，使用后会在天亮结算时消耗。</p>
+    <p class="script-line">昨晚被杀：${victimId ? playerLabel(victimId) : "无人"}${victimId ? roleBadgeText(getPlayer(victimId)) : ""}。解药和毒药各一次，使用后会在天亮结算时消耗。</p>
     <div class="target-grid">
       <button class="mini-button ${state.night.witchHealTargetId ? "is-selected" : ""}" type="button" data-witch-heal="${victimId}" ${canHeal ? "" : "disabled"}>${state.night.witchHealTargetId ? "取消解药" : "使用解药"}</button>
       <button class="mini-button" type="button" data-clear-poison>不使用毒药</button>
@@ -500,11 +538,32 @@ function renderWitchAction(panel) {
 }
 
 function canWitchHealSelf(witch, victimId) {
-  if (!witch) return false;
+  if (!witch) return true;
   if (witch.id !== victimId) return true;
   if (state.rules.witchSelfRescue === "always") return true;
   if (state.rules.witchSelfRescue === "never") return false;
   return state.round === 1;
+}
+
+function wolfMarker() {
+  return `
+    <h3>快速标狼</h3>
+    <p class="script-line">狼人睁眼时点一下座位，法官提示板会把他记为狼人。</p>
+    <div class="target-grid wolf-marker-grid">
+      ${alivePlayers().map((player) => `
+        <button
+          class="mini-button ${isWolfRole(player.roleId) ? "is-wolf" : ""}"
+          type="button"
+          data-toggle-wolf="${player.id}"
+        >${playerLabel(player.id)}${isWolfRole(player.roleId) ? " · 狼" : ""}</button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function roleBadgeText(player) {
+  const hint = campHint(player);
+  return hint ? `（${hint}，${getRoleName(player.roleId)}）` : "";
 }
 
 function targetPicker(title, hint, field, players) {
@@ -625,6 +684,9 @@ function finishNight() {
   if (witch) {
     if (state.night.witchHealTargetId) witch.skills.healAvailable = false;
     if (state.night.witchPoisonTargetId) witch.skills.poisonAvailable = false;
+  } else {
+    if (state.night.witchHealTargetId) state.roleSkills.witch.healAvailable = false;
+    if (state.night.witchPoisonTargetId) state.roleSkills.witch.poisonAvailable = false;
   }
 
   const guard = state.players.find((player) => player.roleId === "guard");
@@ -829,6 +891,7 @@ document.addEventListener("click", (event) => {
     state.night[field] = state.night[field] === target.dataset.target ? "" : target.dataset.target;
     saveAndRender();
   }
+  if (target.dataset.toggleWolf) toggleWolfRole(target.dataset.toggleWolf);
   if (target.dataset.witchHeal !== undefined) {
     const victimId = target.dataset.witchHeal;
     state.night.witchHealTargetId = state.night.witchHealTargetId ? "" : victimId;

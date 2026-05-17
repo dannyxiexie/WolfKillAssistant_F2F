@@ -468,6 +468,12 @@ p {
   color: var(--gold);
 }
 
+.mini-button.is-wolf {
+  border-color: rgba(214, 99, 88, 0.72);
+  background: rgba(214, 99, 88, 0.18);
+  color: #ff9a92;
+}
+
 .script-list {
   display: grid;
   gap: 10px;
