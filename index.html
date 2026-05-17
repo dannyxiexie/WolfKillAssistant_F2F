@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#111418">
+    <title>狼人杀法官助手</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">线下狼人杀</p>
+          <h1>法官助手</h1>
+        </div>
+        <button class="icon-button" id="resetAllButton" type="button" aria-label="重置本局">
+          <span aria-hidden="true">↺</span>
+        </button>
+      </header>
+
+      <main class="page">
+        <section class="panel hero-panel" aria-labelledby="gameStatusTitle">
+          <div>
+            <p id="gameStatusTitle" class="section-kicker">当前局</p>
+            <div class="status-line">
+              <strong id="playerCountText">0 人</strong>
+              <span id="roleCountText">0 身份</span>
+              <span id="roundText">第 1 夜</span>
+            </div>
+          </div>
+          <button id="startNightButton" class="primary-button" type="button">开始夜晚</button>
+        </section>
+
+        <nav class="tabs" aria-label="主要功能">
+          <button class="tab is-active" type="button" data-tab="setup">配置</button>
+          <button class="tab" type="button" data-tab="night">夜晚</button>
+          <button class="tab" type="button" data-tab="board">提示板</button>
+          <button class="tab" type="button" data-tab="log">日志</button>
+        </nav>
+
+        <section class="tab-panel is-active" id="setup" aria-labelledby="setupTitle">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Setup</p>
+              <h2 id="setupTitle">玩家与身份</h2>
+            </div>
+            <button class="ghost-button" id="shuffleRolesButton" type="button">随机分配</button>
+          </div>
+
+          <div class="panel">
+            <div class="form-row">
+              <label for="playerCountInput">玩家人数</label>
+              <div class="stepper">
+                <button type="button" data-step-player="-1">−</button>
+                <input id="playerCountInput" inputmode="numeric" pattern="[0-9]*" min="4" max="18" value="10">
+                <button type="button" data-step-player="1">+</button>
+              </div>
+            </div>
+
+            <div class="preset-row" aria-label="常用板子">
+              <button class="preset-chip" type="button" data-preset="basic9">9人预女猎</button>
+              <button class="preset-chip" type="button" data-preset="guard10">10人守卫</button>
+              <button class="preset-chip" type="button" data-preset="standard12">12人标准</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head compact">
+              <h3>身份池</h3>
+              <span id="roleBalanceText" class="muted">身份数需等于人数</span>
+            </div>
+            <div class="role-bank" id="roleBank"></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head compact">
+              <h3>座位与真实身份</h3>
+              <button class="text-button" id="renamePlayersButton" type="button">重命名</button>
+            </div>
+            <div class="player-list" id="playerSetupList"></div>
+          </div>
+
+          <div class="panel rules-panel">
+            <h3>规则选项</h3>
+            <label class="select-row">
+              <span>女巫自救</span>
+              <select id="witchSelfRescueSelect">
+                <option value="first_night_only">仅第一夜</option>
+                <option value="always">每晚允许</option>
+                <option value="never">不允许</option>
+              </select>
+            </label>
+            <label class="select-row">
+              <span>守救同守</span>
+              <select id="guardConflictSelect">
+                <option value="target_dies">同守同救死亡</option>
+                <option value="target_lives">同守同救存活</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="night" aria-labelledby="nightTitle">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Night Script</p>
+              <h2 id="nightTitle">夜晚话术</h2>
+            </div>
+            <div class="toolbar-actions">
+              <button class="ghost-button" id="editScriptButton" type="button">编辑</button>
+              <button class="ghost-button" id="copyScriptButton" type="button">复制</button>
+            </div>
+          </div>
+
+          <div class="panel night-control">
+            <div>
+              <p class="section-kicker" id="currentRoundHint">第 1 夜</p>
+              <h3 id="currentStageTitle">天黑请闭眼</h3>
+              <p id="currentStageLine" class="script-line">点击下一步开始。</p>
+            </div>
+            <div class="stage-actions">
+              <button class="ghost-button" id="prevStageButton" type="button">上一步</button>
+              <button class="primary-button" id="nextStageButton" type="button">下一步</button>
+            </div>
+          </div>
+
+          <div class="panel action-panel" id="nightActionPanel"></div>
+
+          <div class="script-list" id="scriptList"></div>
+        </section>
+
+        <section class="tab-panel" id="board" aria-labelledby="boardTitle">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Board</p>
+              <h2 id="boardTitle">提示板</h2>
+            </div>
+            <button class="ghost-button" id="finishNightButton" type="button">天亮结算</button>
+          </div>
+
+          <div class="panel death-panel">
+            <p class="section-kicker">昨夜结果</p>
+            <strong id="deathSummaryText">尚未结算</strong>
+            <p id="winSummaryText" class="muted">根据屠边规则自动提示胜负。</p>
+          </div>
+
+          <div class="board-grid" id="boardGrid"></div>
+        </section>
+
+        <section class="tab-panel" id="log" aria-labelledby="logTitle">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Log</p>
+              <h2 id="logTitle">本局日志</h2>
+            </div>
+            <button class="ghost-button" id="clearLogButton" type="button">清空</button>
+          </div>
+
+          <div class="log-list" id="logList"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="exitModal" hidden>
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="exitModalTitle">
+        <div class="section-head compact">
+          <div>
+            <p class="section-kicker">Out</p>
+            <h3 id="exitModalTitle">标记出局</h3>
+          </div>
+          <button class="icon-button small" id="cancelExitButton" type="button" aria-label="关闭">×</button>
+        </div>
+        <p class="script-line" id="exitPlayerText">选择出局时间和方式。</p>
+        <label class="select-row modal-select">
+          <span>时间</span>
+          <select id="exitTimeSelect"></select>
+        </label>
+        <label class="select-row modal-select">
+          <span>方式</span>
+          <select id="exitMethodSelect">
+            <option value="vote">被投死</option>
+            <option value="wolf">被刀死</option>
+            <option value="poison">被毒死</option>
+            <option value="shoot">被枪带</option>
+            <option value="wolf_king">狼王带走</option>
+            <option value="self_boom">狼人自爆</option>
+            <option value="other">其他</option>
+          </select>
+        </label>
+        <button class="primary-button" id="confirmExitButton" type="button">确认出局</button>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
