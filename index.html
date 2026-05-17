@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#111418">
     <title>狼人杀法官助手</title>
     <link rel="stylesheet" href="./style.css">
@@ -73,14 +73,6 @@
             <div class="role-bank" id="roleBank"></div>
           </div>
 
-          <div class="panel">
-            <div class="section-head compact">
-              <h3>座位与真实身份</h3>
-              <button class="text-button" id="renamePlayersButton" type="button">重命名</button>
-            </div>
-            <div class="player-list" id="playerSetupList"></div>
-          </div>
-
           <div class="panel rules-panel">
             <h3>规则选项</h3>
             <label class="select-row">
@@ -117,7 +109,7 @@
             <div>
               <p class="section-kicker" id="currentRoundHint">第 1 夜</p>
               <h3 id="currentStageTitle">天黑请闭眼</h3>
-              <p id="currentStageLine" class="script-line">点击下一步开始。</p>
+              <p id="currentStageLine" class="script-line read-script">点击下一步开始。</p>
             </div>
             <div class="stage-actions">
               <button class="ghost-button" id="prevStageButton" type="button">上一步</button>
@@ -136,7 +128,10 @@
               <p class="section-kicker">Board</p>
               <h2 id="boardTitle">提示板</h2>
             </div>
-            <button class="ghost-button" id="finishNightButton" type="button">天亮结算</button>
+            <div class="toolbar-actions">
+              <button class="ghost-button" id="renamePlayersButton" type="button">重命名</button>
+              <button class="ghost-button" id="finishNightButton" type="button">天亮结算</button>
+            </div>
           </div>
 
           <div class="panel death-panel">

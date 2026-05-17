@@ -17,6 +17,7 @@
 
 * {
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 html {
@@ -41,6 +42,7 @@ select {
 
 button {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .app-shell {
@@ -432,6 +434,16 @@ p {
   line-height: 1.5;
 }
 
+.read-script {
+  border: 1px solid rgba(215, 168, 79, 0.42);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: rgba(215, 168, 79, 0.13);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
 .stage-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -575,6 +587,33 @@ p {
 
 .role-pill {
   color: var(--role-color, var(--gold));
+}
+
+.board-role-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #12161b;
+}
+
+.board-role-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.board-role-row select {
+  min-height: 36px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171c23;
+  color: var(--text);
+  padding: 0 8px;
 }
 
 .state-pill.is-dead {

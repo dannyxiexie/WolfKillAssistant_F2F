@@ -191,6 +191,16 @@ function campHint(player) {
   return isWolfRole(player.roleId) ? "狼" : "好";
 }
 
+function wolfRoleLimit() {
+  return ROLES
+    .filter((role) => role.camp === "wolf")
+    .reduce((sum, role) => sum + (state.roleCounts[role.id] || 0), 0);
+}
+
+function markedWolfCount() {
+  return state.players.filter((player) => isWolfRole(player.roleId)).length;
+}
+
 function switchTab(tabId) {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.tab === tabId);
@@ -246,6 +256,10 @@ function changePlayerRole(playerId, roleId) {
 function toggleWolfRole(playerId) {
   const player = getPlayer(playerId);
   if (!player) return;
+  if (!isWolfRole(player.roleId) && wolfRoleLimit() > 0 && markedWolfCount() >= wolfRoleLimit()) {
+    showToast(`狼人已标满 ${markedWolfCount()}/${wolfRoleLimit()}`);
+    return;
+  }
   player.roleId = isWolfRole(player.roleId) ? "" : "wolf";
   player.skills = normalizeSkills(player.roleId, {});
   saveAndRender();
@@ -421,10 +435,12 @@ function renderRoleBank() {
 }
 
 function renderPlayerSetup() {
+  const setupList = $("#playerSetupList");
+  if (!setupList) return;
   const options = [`<option value="">未登记</option>`].concat(
     ROLES.map((role) => `<option value="${role.id}">${role.name}</option>`)
   ).join("");
-  $("#playerSetupList").innerHTML = state.players.map((player) => `
+  setupList.innerHTML = state.players.map((player) => `
     <div class="player-row">
       <div class="player-main">
         <span class="seat-badge">${player.seat}</span>
@@ -475,7 +491,7 @@ function renderNightAction(stageId) {
   }
   if (stageId === "seer") {
     const inspected = getPlayer(state.night.seerInspectTargetId);
-    panel.innerHTML = targetPicker("预言家查验", inspected ? `${playerLabel(inspected.id)}：${getRoleName(inspected.roleId)}` : "选择查验对象", "seerInspectTargetId", alivePlayers());
+    panel.innerHTML = targetPicker("预言家查验", inspected ? seerResultText(inspected) : "选择查验对象", "seerInspectTargetId", alivePlayers());
     return;
   }
   if (stageId === "witch") {
@@ -546,9 +562,11 @@ function canWitchHealSelf(witch, victimId) {
 }
 
 function wolfMarker() {
+  const marked = markedWolfCount();
+  const limit = wolfRoleLimit();
   return `
     <h3>快速标狼</h3>
-    <p class="script-line">狼人睁眼时点一下座位，法官提示板会把他记为狼人。</p>
+    <p class="script-line">已标 ${marked}/${limit || "?"} 只狼。点座位可快速标记或取消。</p>
     <div class="target-grid wolf-marker-grid">
       ${alivePlayers().map((player) => `
         <button
@@ -564,6 +582,17 @@ function wolfMarker() {
 function roleBadgeText(player) {
   const hint = campHint(player);
   return hint ? `（${hint}，${getRoleName(player.roleId)}）` : "";
+}
+
+function seerResultText(player) {
+  const roleName = getRoleName(player.roleId);
+  return `${isWolfRole(player.roleId) ? "🐺 " : ""}${playerLabel(player.id)}：${roleName}`;
+}
+
+function roleOptions(selectedRoleId) {
+  return [`<option value="">未登记</option>`]
+    .concat(ROLES.map((role) => `<option value="${role.id}" ${selectedRoleId === role.id ? "selected" : ""}>${role.name}</option>`))
+    .join("");
 }
 
 function targetPicker(title, hint, field, players) {
@@ -606,6 +635,12 @@ function renderBoard() {
           <span class="state-pill ${player.alive ? "" : "is-dead"}">${player.alive ? "存活" : "出局"}</span>
           <button class="ghost-button" type="button" data-${player.alive ? "mark-exit" : "restore-alive"}="${player.id}">${player.alive ? "标记出局" : "恢复存活"}</button>
         </div>
+        <label class="board-role-row">
+          <span>真实身份</span>
+          <select data-player-role="${player.id}" aria-label="${player.name}身份">
+            ${roleOptions(player.roleId)}
+          </select>
+        </label>
         ${player.death ? `<p class="death-note">${formatDeath(player.death)}</p>` : ""}
         ${abilityHtml(player)}
       </article>
@@ -928,5 +963,16 @@ document.addEventListener("change", (event) => {
     saveAndRender();
   }
 });
+
+document.addEventListener("dblclick", (event) => {
+  event.preventDefault();
+}, { passive: false });
+
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (event) => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 320) event.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
 
 renderAll();
